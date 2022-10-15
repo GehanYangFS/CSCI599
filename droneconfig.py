@@ -1,4 +1,5 @@
 import json
+from flags import Flag_ue_executable_settings_path
 
 
 class Config:
@@ -27,13 +28,13 @@ class Config:
         for _ in range(quotaPerDispathcer):
             for dispatcher in dispatchers:
                 self._add_drone_with_position(*dispatcher)
-            self.z_axis -= 1
+            # self.z_axis -= 1
         output = open(self.outputDir, 'w', encoding='utf-8')
         json.dump(self.base, output)
 
 
 if __name__ == '__main__':
-    config = Config('baseSettings.json', 'C:/Users/shenb/Documents/AirSim/settings.json')
+    config = Config('baseSettings.json', Flag_ue_executable_settings_path)
     config.generateDrones(
         [[0,0,0], [4,0,0], [4,4,0],[0,4,0]],
         100//4

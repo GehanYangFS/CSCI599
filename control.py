@@ -1,9 +1,11 @@
 from turtle import pos
 import airsim
-from PointCloud import PointCloud
-from Config import Config
+from PointCloud import PointCloud, AlphabetPointCloud
+from DroneConfig import Config
 import time
 import numpy as np
+import os
+from Flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
 
 
 def normalize(v):
@@ -36,7 +38,7 @@ class Control:
             vehicle_name = cfg.droneNames[numDrones-1-i]
             pose = self.client.simGetVehiclePose(vehicle_name=vehicle_name)
             cpose = np.array(
-                [pose.position.x_val, pose.position.y_val, pose.position.z_val])
+                [pose.position.x_val, pose.position.y_val, pose.position.z_val], dtype=np.float32)
             vpose = normalize(np.array(poses[i]) - cpose)
             pose.position = pose.position + \
                 airsim.Vector3r(*(vpose * self.step_size))
@@ -44,20 +46,37 @@ class Control:
             self.client.simSetVehiclePose(
                 pose, True, vehicle_name=vehicle_name)
 
+    def moveToPosition(self, poses):
+        for i in range(numDrones):
+            vehicle_name = cfg.droneNames[numDrones-1-i]
+            pose = self.client.simGetVehiclePose(vehicle_name=vehicle_name)
+            pose.position = airsim.Vector3r(*poses[i])
+            self.client.simSetVehiclePose(
+                pose, True, vehicle_name=vehicle_name)
+            time.sleep(0.1)
+
 
 if __name__ == '__main__':
     cfg = Config('baseSettings.json',
-                 'C:/Users/shenb/Documents/AirSim/settings.json')
-    cfg.generateDrones(
-        [[0, 0, 0], [4, 0, 0], [4, 4, 0], [0, 4, 0]],
-        100//4
-    )
-    input('Press any key to continue...')
+                 Flag_ue_executable_settings_path)
 
-    numDrones = len(cfg.droneNames)
-    poses = PointCloud("", numDrones).getPoints()
+    poses = []
+    apc = AlphabetPointCloud(downwash=1)
+    poses.extend(apc.query_point_cloud('U'))
+    poses.extend(apc.query_point_cloud('S', [0, 25, 0]))
+    poses.extend(apc.query_point_cloud('C', [0, 50, 0]))
+    numDrones = len(poses)
+
+    cfg.generateDrones(
+        [[0, 0, 0]],
+        numDrones
+    )
+
+    os.startfile(Flag_ue_executable_file)
+    input('Press any key to continue...')
 
     main_control = Control(cfg, 1)
 
-    for _ in range(100):
-        main_control.step(poses)
+    main_control.moveToPosition(poses)
+    # for _ in range(100):
+    #     main_control.step(poses)
