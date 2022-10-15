@@ -1,11 +1,11 @@
 from turtle import pos
 import airsim
-from PointCloud import PointCloud, AlphabetPointCloud
-from DroneConfig import Config
+from pointcloud import PointCloud, AlphabetPointCloud
+from droneconfig import Config
 import time
 import numpy as np
 import os
-from Flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
+from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
 
 
 def normalize(v):
