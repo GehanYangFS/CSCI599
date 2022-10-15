@@ -1,0 +1,12 @@
+{
+    "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/main/docs/settings.md",
+    "SettingsVersion": 1.2,
+    "SimMode": "Multirotor",
+    "ClockSpeed": 1,
+    "PhysicsEngineName": "ExternalPhysicsEngine",
+    "Vehicles": {},
+    "TimeOfDay": {
+        "Enabled": false,
+        "StartDateTime": "2018-04-12 23:30:00"
+    }
+}
