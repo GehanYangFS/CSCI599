@@ -1,11 +1,14 @@
 from turtle import pos
 import airsim
+from algorithms import MinDist
 from pointcloud import PointCloud, AlphabetPointCloud
 from droneconfig import Config
 import time
 import numpy as np
 import os
 from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
+from algorithms import MinDist, QuotaBalanced
+
 
 
 def normalize(v):
@@ -28,10 +31,10 @@ class Control:
         self._enableApiControl()
 
     def _enableApiControl(self):
-        for i in range(self.num_drones):
-            vehicle_name = self.cfg.droneNames[self.num_drones-1-i]
-            self.client.enableApiControl(True, vehicle_name)
-            self.client.armDisarm(True, vehicle_name)
+        for dispathcer, drone_names in self.cfg.dispatchers.items():
+            for drone in drone_names[::-1]:
+                self.client.enableApiControl(True, drone)
+                self.client.armDisarm(True, drone)
 
     def step(self, poses):
         for i in range(numDrones):
@@ -46,15 +49,17 @@ class Control:
             self.client.simSetVehiclePose(
                 pose, True, vehicle_name=vehicle_name)
 
-    def moveToPosition(self, poses):
-        for i in range(numDrones):
-            vehicle_name = cfg.droneNames[numDrones-1-i]
-            pose = self.client.simGetVehiclePose(vehicle_name=vehicle_name)
-            pose.position = airsim.Vector3r(*poses[i])
-            self.client.simSetVehiclePose(
-                pose, True, vehicle_name=vehicle_name)
-            time.sleep(0.1)
+    def _moveToPosition(self, target_pose, vehicle_name, dispatcher):
+        pose = self.client.simGetVehiclePose(vehicle_name=vehicle_name)
+        pose.position = airsim.Vector3r(*target_pose) - airsim.Vector3r(*dispatcher)
+        self.client.simSetVehiclePose(
+            pose, True, vehicle_name=vehicle_name)
+        time.sleep(0.1)
 
+    def moveToPosition(self, dispatchers, poses):
+        for dispathcer, drone_names in self.cfg.dispatchers.items():
+            for drone in drone_names[::-1]:
+                self._moveToPosition(poses[cfg.droneNames[drone]], drone, dispatchers[dispathcer])
 
 if __name__ == '__main__':
     cfg = Config('baseSettings.json',
@@ -62,14 +67,19 @@ if __name__ == '__main__':
 
     poses = []
     apc = AlphabetPointCloud(downwash=1)
-    poses.extend(apc.query_point_cloud('U'))
-    poses.extend(apc.query_point_cloud('S', [0, 25, 0]))
-    poses.extend(apc.query_point_cloud('C', [0, 50, 0]))
+    poses.extend(apc.query_point_cloud(alphabet = 'U', volume= 3))
+    poses.extend(apc.query_point_cloud(alphabet = 'S', offset = [0, 20, 0], volume= 3))
+    poses.extend(apc.query_point_cloud(alphabet = 'C', offset = [0, 40, 0], volume= 3))
     numDrones = len(poses)
+    dispatchers = [
+        [0,0,0], [0,4,0], [4,0,0], [4,4,0]
+    ]
+    deployment = QuotaBalanced(poses, dispatchers, [numDrones // len(dispatchers) + 1 for _ in range(len(dispatchers))])
 
     cfg.generateDrones(
-        [[0, 0, 0]],
-        numDrones
+        dispatchers,
+        numDrones,
+        deployment
     )
 
     os.startfile(Flag_ue_executable_file)
@@ -77,6 +87,6 @@ if __name__ == '__main__':
 
     main_control = Control(cfg, 1)
 
-    main_control.moveToPosition(poses)
+    main_control.moveToPosition(dispatchers, poses)
     # for _ in range(100):
     #     main_control.step(poses)

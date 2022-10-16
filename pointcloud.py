@@ -62,7 +62,7 @@ class AlphabetPointCloud():
         image = self._query_image(alphabet)
         return np.array(image, dtype=np.uint8)
     
-    def query_point_cloud(self, alphabet: str, offset: list = [0,0,0]):
+    def query_point_cloud(self, alphabet: str, offset: list = [0,0,0], volume: int = 1):
         mat = self.query_matrix(alphabet)
         pcs = []
         for i in range(len(mat)):
@@ -72,7 +72,16 @@ class AlphabetPointCloud():
                     for p in range(self.downwash * 2 + 1):
                         for q in range(-self.downwash, self.downwash + 1):
                             mat[i+p][j+q] = 0
-        return pcs
+        pcs = np.array(pcs, dtype=np.float32)
+        diff = pcs[:, 0]
+        pcs[:,2] += (diff - np.max(diff))
+        pcs[:,0] = max(diff)
+        out = pcs.copy()
+        for _ in range(1, volume):
+            pcs[:, 0] += 2 
+            out = np.concatenate((out, pcs), axis = 0)
+            print(out.shape)
+        return out
 
     def debug_point_cloud(self, alphabet: str):
         pcs = self.query_point_cloud(alphabet)
