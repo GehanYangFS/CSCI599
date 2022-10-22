@@ -1,5 +1,5 @@
 from random import randint
-from turtle import down
+from xmlrpc.client import boolean
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import matplotlib.pyplot as plt
@@ -60,9 +60,11 @@ class AlphabetPointCloud():
 
     def query_matrix(self, alphabet: str):
         image = self._query_image(alphabet)
+        plt.imshow(image)
+        plt.show()
         return np.array(image, dtype=np.uint8)
     
-    def query_point_cloud(self, alphabet: str, offset: list = [0,0,0], volume: int = 1):
+    def query_point_cloud(self, alphabet: str, offset: list = [0,0,0], volume: int = 1, debug: boolean = False):
         mat = self.query_matrix(alphabet)
         pcs = []
         for i in range(len(mat)):
@@ -72,6 +74,8 @@ class AlphabetPointCloud():
                     for p in range(self.downwash * 2 + 1):
                         for q in range(-self.downwash, self.downwash + 1):
                             mat[i+p][j+q] = 0
+        if debug:
+            return pcs
         pcs = np.array(pcs, dtype=np.float32)
         diff = pcs[:, 0]
         pcs[:,2] += (diff - np.max(diff))
@@ -80,22 +84,20 @@ class AlphabetPointCloud():
         for _ in range(1, volume):
             pcs[:, 0] += 2 
             out = np.concatenate((out, pcs), axis = 0)
-            print(out.shape)
         return out
 
     def debug_point_cloud(self, alphabet: str):
-        pcs = self.query_point_cloud(alphabet)
+        pcs = self.query_point_cloud(alphabet, debug=True)
         pcs_img = np.zeros([self.size,self.size])
         for pc in pcs:
-            pcs_img[pc[0]][pc[1]] = 255
-        plt.imshow(pcs_img)
+            pcs_img[int(pc[0])][int(pc[1])] = 255
+        plt.imshow(pcs_img, cmap='gray')
         plt.show()
 
 
 if __name__ == '__main__':
-    pc = PointCloud("", 100)
-    print(pc.getPoints()) 
+    # pc = PointCloud("", 100)
+    # print(pc.getPoints()) 
 
     apc = AlphabetPointCloud(downwash=1)
     apc.debug_point_cloud('B')
-    print(apc.query_point_cloud('B'))
