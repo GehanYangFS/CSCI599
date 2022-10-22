@@ -10,6 +10,17 @@ class Drone:
         self.position = position
         self.target = target
 
+class MultiDrones:
+    def __init__(self, drones: list[Drone]) -> None:
+        self.position = np.zeros([len(drones), 3])
+        self.target = np.zeros([len(drones), 3])
+        for i in range(len(drones)):
+            self.position[i] = drones[i].position
+            self.target[i] = drones[i].target
+
+    def __len__(self):
+        return len(self.position)
+
 class Config:
     def __init__(self, baseSettingDir: str, outputDir: str) -> None:
         self.base = json.load(open(baseSettingDir))
@@ -24,7 +35,9 @@ class Config:
         self.drone_number += 1
         return self.drone_number
 
-        
+    @property
+    def all_drones(self) -> list[Drone]:
+        return sorted(list(self.droneNames.values()), key=lambda i: i.pose_id)
 
     def _add_drone_with_position(self, x: float, y: float, z: float, pose_id: int, dispatcher: int) -> None:
         drone_name = 'Drone_{}'.format(self._drone_number)

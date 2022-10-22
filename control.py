@@ -1,13 +1,13 @@
 import airsim
 from algorithms import MinDist
 from pointcloud import PointCloud, AlphabetPointCloud
-from droneconfig import Config
+from droneconfig import Config, MultiDrones
 import time
 import numpy as np
 import os
 from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
 from algorithms import MinDist, QuotaBalanced
-
+from MAPF import MAPF
 
 
 def normalize(v):
@@ -50,10 +50,9 @@ class Control:
 
     def _moveToPosition(self, target_pose, vehicle_name, dispatcher):
         pose = self.client.simGetVehiclePose(vehicle_name=vehicle_name)
-        pose.position = airsim.Vector3r(*target_pose) - airsim.Vector3r(*dispatcher)
+        pose.position = airsim.Vector3r(*target_pose) - airsim.Vector3r(*self.cfg.droneNames[vehicle_name].position)
         self.client.simSetVehiclePose(
             pose, True, vehicle_name=vehicle_name)
-        time.sleep(0.1)
 
     def moveToPosition(self, dispatchers, poses):
         for dispathcer, drone_names in self.cfg.dispatchers.items():
@@ -85,10 +84,18 @@ if __name__ == '__main__':
     for drone in cfg.droneNames:
         cfg.droneNames[drone].target = poses[cfg.droneNames[drone].pose_id]
     # os.startfile(Flag_ue_executable_file)
-    # input('Press any key to continue...')
+    input('Press any key to continue...')
 
     main_control = Control(cfg, 1)
 
-    main_control.moveToPosition(dispatchers, poses)
+    # main_control.moveToPosition(dispatchers, poses)
+
+    mapf = MAPF()
+    mdrones = MultiDrones(main_control.cfg.all_drones)
+    for i in range(1000000):
+        mapf.next_step(mdrones)
+        main_control.moveToPosition(dispatchers, mdrones.position)
+        if i % 100 == 0:
+            input('...')
     # for _ in range(100):
     #     main_control.step(poses)
