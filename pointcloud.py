@@ -60,8 +60,6 @@ class AlphabetPointCloud():
 
     def query_matrix(self, alphabet: str):
         image = self._query_image(alphabet)
-        plt.imshow(image)
-        plt.show()
         return np.array(image, dtype=np.uint8)
     
     def query_point_cloud(self, alphabet: str, offset: list = [0,0,0], volume: int = 1, debug: boolean = False):

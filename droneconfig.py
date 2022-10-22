@@ -1,6 +1,14 @@
 import json
 from flags import Flag_ue_executable_settings_path
 import collections
+import numpy as np
+
+class Drone:
+    def __init__(self, name, pose_id, position, target) -> None:
+        self.name = name
+        self.pose_id = pose_id
+        self.position = position
+        self.target = target
 
 class Config:
     def __init__(self, baseSettingDir: str, outputDir: str) -> None:
@@ -15,6 +23,7 @@ class Config:
     def _drone_number(self) -> int:
         self.drone_number += 1
         return self.drone_number
+
         
 
     def _add_drone_with_position(self, x: float, y: float, z: float, pose_id: int, dispatcher: int) -> None:
@@ -23,7 +32,7 @@ class Config:
             "VehicleType": "SimpleFlight",
             "X": x, "Y": y, "Z": self.z_axis
         }
-        self.droneNames[drone_name] = pose_id
+        self.droneNames[drone_name] = Drone(drone_name, pose_id, np.array([x,y,self.z_axis]), None)
         self.dispatchers[dispatcher].append(drone_name)
 
     def generateDrones(self, dispatchers: list[list[int]], quotaPerDispathcer: int, deployment: dict[int, list[int]] = {}) -> None:
@@ -36,8 +45,10 @@ class Config:
                 # self.z_axis -= 1
         else:
             for k,v in deployment.items():
+                self.z_axis = -1
                 for pose_id in v:
                     self._add_drone_with_position(*dispatchers[k], pose_id = pose_id, dispatcher = k)
+                    self.z_axis -= 1
         output = open(self.outputDir, 'w', encoding='utf-8')
         json.dump(self.base, output)
 

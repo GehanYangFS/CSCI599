@@ -1,4 +1,3 @@
-from turtle import pos
 import airsim
 from algorithms import MinDist
 from pointcloud import PointCloud, AlphabetPointCloud
@@ -38,7 +37,7 @@ class Control:
 
     def step(self, poses):
         for i in range(numDrones):
-            vehicle_name = cfg.droneNames[numDrones-1-i]
+            vehicle_name = cfg.droneNames[numDrones-1-i].name
             pose = self.client.simGetVehiclePose(vehicle_name=vehicle_name)
             cpose = np.array(
                 [pose.position.x_val, pose.position.y_val, pose.position.z_val], dtype=np.float32)
@@ -59,7 +58,8 @@ class Control:
     def moveToPosition(self, dispatchers, poses):
         for dispathcer, drone_names in self.cfg.dispatchers.items():
             for drone in drone_names[::-1]:
-                self._moveToPosition(poses[cfg.droneNames[drone]], drone, dispatchers[dispathcer])
+                self._moveToPosition(poses[cfg.droneNames[drone].pose_id], drone, dispatchers[dispathcer])
+            
 
 if __name__ == '__main__':
     cfg = Config('baseSettings.json',
@@ -82,8 +82,10 @@ if __name__ == '__main__':
         deployment
     )
 
-    os.startfile(Flag_ue_executable_file)
-    input('Press any key to continue...')
+    for drone in cfg.droneNames:
+        cfg.droneNames[drone].target = poses[cfg.droneNames[drone].pose_id]
+    # os.startfile(Flag_ue_executable_file)
+    # input('Press any key to continue...')
 
     main_control = Control(cfg, 1)
 
