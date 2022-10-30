@@ -1,3 +1,5 @@
+import imp
+from multiprocessing.spawn import old_main_modules
 import airsim
 from algorithms import MinDist
 from pointcloud import PointCloud, AlphabetPointCloud
@@ -8,14 +10,11 @@ import os
 from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
 from algorithms import MinDist, QuotaBalanced
 from MAPF import MAPF
-
-
-def normalize(v):
-    norm = np.linalg.norm(v)
-    if norm == 0:
-        norm = np.finfo(v.dtype).eps
-    return v/norm
-
+import cProfile
+import pdb
+import copy
+from utils import normalize
+from tqdm import tqdm
 
 class Control:
     def __init__(self, cfg: Config, step_size: float) -> None:
@@ -28,6 +27,8 @@ class Control:
 
         self.num_drones = len(cfg.droneNames)
         self._enableApiControl()
+        
+        self.mapf = []
 
     def _enableApiControl(self):
         for dispathcer, drone_names in self.cfg.dispatchers.items():
@@ -57,15 +58,111 @@ class Control:
     def moveToPosition(self, dispatchers, poses):
         for dispathcer, drone_names in self.cfg.dispatchers.items():
             for drone in drone_names[::-1]:
-                self._moveToPosition(poses[cfg.droneNames[drone].pose_id], drone, dispatchers[dispathcer])
-            
+                self._moveToPosition(poses[self.cfg.droneNames[drone].pose_id], drone, dispatchers[dispathcer])
+        self.detect_collision()
+    
+    def detect_collision(self):
+        for drone in self.cfg.all_drones:
+            coll = self.client.simGetCollisionInfo(vehicle_name=drone.name)
+            if coll.has_collided == True:
+                continue
+                pdb.set_trace()
+                print(coll.object_name)
+                print(coll.position)
+                pose = self.client.simGetVehiclePose(coll.object_name)
+                pose.position += airsim.Vector3r(*self.cfg.droneNames[coll.object_name].position)
+                pose.position.z_val -= -1
+                self.client.simSpawnObject('11', 'PointLightBP',pose ,airsim.Vector3r(1,1,1))
+                print('gf:', self.mapf[0].cache[0][self.cfg.droneNames[coll.object_name].pose_id])
+                print('rf:', self.mapf[0].cache[1][self.cfg.droneNames[coll.object_name].pose_id])
+                
+def TargetExchangeFailCaseTest():
+    dispatchers = [
+        [0,0,-1], [0,4,-1], [4,0,-1], [4,4,-1]
+    ]
+    destination = [
+        [4,4, -1], [4,0,-1], [0,4,-1], [0,0,-1]
+    ]
+    cfg = Config('baseSettings.json',
+                 Flag_ue_executable_settings_path)
+
+    cfg.generateDrones(
+        dispatchers,
+        1,
+        {}
+    )
+    idx = 0
+    for drone in cfg.droneNames:
+        cfg.droneNames[drone].target = destination[idx]
+        idx += 1
+    input('Press any key to continue...')
+    main_control = Control(cfg, 1)
+
+    # main_control.moveToPosition(dispatchers, poses)
+
+    mapf = MAPF()
+    main_control.mapf.append(mapf)
+    mdrones = MultiDrones(main_control.cfg.all_drones)
+    for i in range(1000000):
+        code = mapf.next_step(mdrones)
+        if code == 0:
+            break
+        main_control.moveToPosition(dispatchers, mdrones.position)
+        for drone in main_control.cfg.all_drones:
+            pos = main_control.client.simGetVehiclePose(drone.name).position
+            mdrones.position[drone.pose_id] = np.array([pos.x_val, pos.y_val, pos.z_val]) + drone.position
+
+        # if i % 1000 == 0:
+            # input('...')
+
+
+def TargetExchangeFailCaseTest2():
+    dispatchers = [
+        [0,0,-1]
+    ]
+    destination = [
+        [0,0, -10], [0,0,-9], [0,0,-8], [0,0,-7]
+    ]
+    cfg = Config('baseSettings.json',
+                 Flag_ue_executable_settings_path)
+
+    cfg.generateDrones(
+        dispatchers,
+        4,
+        {}
+    )
+    idx = 0
+    for drone in cfg.droneNames:
+        cfg.droneNames[drone].target = destination[idx]
+        idx += 1
+    input('Press any key to continue...')
+    main_control = Control(cfg, 1)
+
+    # main_control.moveToPosition(dispatchers, poses)
+
+    mapf = MAPF()
+    main_control.mapf.append(mapf)
+    mdrones = MultiDrones(main_control.cfg.all_drones)
+    for i in range(1000000):
+        code = mapf.next_step(mdrones)
+        if code == 0:
+            break
+        main_control.moveToPosition(dispatchers, mdrones.position)
+        for drone in main_control.cfg.all_drones:
+            pos = main_control.client.simGetVehiclePose(drone.name).position
+            mdrones.position[drone.pose_id] = np.array([pos.x_val, pos.y_val, pos.z_val]) + drone.position
+
+        # if i % 1000 == 0:
+            # input('...')
+
 
 if __name__ == '__main__':
+    # TargetExchangeFailCaseTest2()
     cfg = Config('baseSettings.json',
                  Flag_ue_executable_settings_path)
 
     poses = []
-    apc = AlphabetPointCloud(downwash=1)
+    apc = AlphabetPointCloud(downwash=2)
     poses.extend(apc.query_point_cloud(alphabet = 'U', volume= 3))
     poses.extend(apc.query_point_cloud(alphabet = 'S', offset = [0, 20, 0], volume= 3))
     poses.extend(apc.query_point_cloud(alphabet = 'C', offset = [0, 40, 0], volume= 3))
@@ -90,12 +187,37 @@ if __name__ == '__main__':
 
     # main_control.moveToPosition(dispatchers, poses)
 
+    sim = True
     mapf = MAPF()
+    main_control.mapf.append(mapf)
     mdrones = MultiDrones(main_control.cfg.all_drones)
-    for i in range(1000000):
-        mapf.next_step(mdrones)
-        main_control.moveToPosition(dispatchers, mdrones.position)
-        if i % 100 == 0:
-            input('...')
+    prev = copy.deepcopy(mdrones.position)
+    for i in tqdm(range(1000000)):
+        # cProfile.run('mapf.next_step(mdrones)')
+        code = mapf.next_step(mdrones)
+        
+        for i in range(len(mdrones.position)):
+            dist = np.linalg.norm(mdrones.position[i] - mdrones.position, axis = 1)
+            dist[i] = max(dist)
+            dist[dist>0.5] = 0
+            if dist.sum() > 0:
+                print('coll!')
+        if code == 0:
+            break
+        # print(np.linalg.norm(prev-mdrones.position, axis = 1))
+        # print(prev)
+        # for j in range(len(prev)):
+        #     if (np.linalg.norm(prev[j]-mdrones.position, axis = 1) < 1).sum() > 1:
+        #         pdb.set_trace()
+        # prev = copy.deepcopy(mdrones.position)
+        if sim:
+            main_control.moveToPosition(dispatchers, mdrones.position)
+            for drone in main_control.cfg.all_drones:
+                pos = main_control.client.simGetVehiclePose(drone.name).position
+                mdrones.position[drone.pose_id] = np.array([pos.x_val, pos.y_val, pos.z_val]) + drone.position
+
+        # if i % 1000 == 0:
+            # input('...')
+
     # for _ in range(100):
     #     main_control.step(poses)

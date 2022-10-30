@@ -68,10 +68,11 @@ class AlphabetPointCloud():
         for i in range(len(mat)):
             for j in range(len(mat[0])):
                 if (mat[i][j] == 1):
-                    pcs.append([i + offset[0], j + offset[1], -100 + offset[2]])
+                    pcs.append([i + offset[0], j + offset[1], -50 + offset[2]])
                     for p in range(self.downwash * 2 + 1):
                         for q in range(-self.downwash, self.downwash + 1):
-                            mat[i+p][j+q] = 0
+                            if i+p < len(mat) and j + q < len(mat[0]):
+                                mat[i+p][j+q] = 0
         if debug:
             return pcs
         pcs = np.array(pcs, dtype=np.float32)
@@ -80,7 +81,7 @@ class AlphabetPointCloud():
         pcs[:,0] = max(diff)
         out = pcs.copy()
         for _ in range(1, volume):
-            pcs[:, 0] += 2 
+            pcs[:, 0] += 3
             out = np.concatenate((out, pcs), axis = 0)
         return out
 

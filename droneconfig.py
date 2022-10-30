@@ -55,13 +55,13 @@ class Config:
                 for idx, dispatcher in enumerate(dispatchers):
                     self._add_drone_with_position(*dispatcher, pose_id = pose_id, dispatcher = idx)
                     pose_id += 1
-                # self.z_axis -= 1
+                    self.z_axis -= 1
         else:
             for k,v in deployment.items():
                 self.z_axis = -1
                 for pose_id in v:
                     self._add_drone_with_position(*dispatchers[k], pose_id = pose_id, dispatcher = k)
-                    self.z_axis -= 1
+                    self.z_axis -= 2
         output = open(self.outputDir, 'w', encoding='utf-8')
         json.dump(self.base, output)
 
