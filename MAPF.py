@@ -13,6 +13,7 @@ class MAPF:
         self.target_eps = 0.2
         self.cache = [0,0]
         self.STEPS_PER_DISPATCH = 1
+        self.EXIT_THRESHOLD = 1
     
     def add_deployment(self, deployment):
         self.deployment = Dispathcers(deployment)
@@ -67,6 +68,8 @@ class MAPF:
         #     pdb.set_trace()
         drones.preposition = copy.deepcopy(drones.position)
         drones.position[np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps]+= newPosition[np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps]
+        if np.sum(np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps) <= self.EXIT_THRESHOLD:
+            return 0
         if step % self.STEPS_PER_DISPATCH == 0:
             self.allowed = self.deployment.allow_dispathed
         if len(self.deployment.all) != len(self.allowed):
