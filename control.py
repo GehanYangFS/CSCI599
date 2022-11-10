@@ -75,85 +75,6 @@ class Control:
                 print('gf:', self.mapf[0].cache[0][self.cfg.droneNames[coll.object_name].pose_id])
                 print('rf:', self.mapf[0].cache[1][self.cfg.droneNames[coll.object_name].pose_id])
                 
-def TargetExchangeFailCaseTest():
-    dispatchers = [
-        [0,0,-1], [0,4,-1], [4,0,-1], [4,4,-1]
-    ]
-    destination = [
-        [4,4, -1], [4,0,-1], [0,4,-1], [0,0,-1]
-    ]
-    cfg = Config('baseSettings.json',
-                 Flag_ue_executable_settings_path)
-
-    cfg.generateDrones(
-        dispatchers,
-        1,
-        {}
-    )
-    idx = 0
-    for drone in cfg.droneNames:
-        cfg.droneNames[drone].target = destination[idx]
-        idx += 1
-    input('Press any key to continue...')
-    main_control = Control(cfg, 1)
-
-    # main_control.moveToPosition(dispatchers, poses)
-
-    mapf = MAPF()
-    main_control.mapf.append(mapf)
-    mdrones = MultiDrones(main_control.cfg.all_drones)
-    for i in range(1000000):
-        code = mapf.next_step(mdrones)
-        if code == 0:
-            break
-        main_control.moveToPosition(dispatchers, mdrones.position)
-        for drone in main_control.cfg.all_drones:
-            pos = main_control.client.simGetVehiclePose(drone.name).position
-            mdrones.position[drone.pose_id] = np.array([pos.x_val, pos.y_val, pos.z_val]) + drone.position
-
-        # if i % 1000 == 0:
-            # input('...')
-
-
-def TargetExchangeFailCaseTest2():
-    dispatchers = [
-        [0,0,-1]
-    ]
-    destination = [
-        [0,0, -10], [0,0,-9], [0,0,-8], [0,0,-7]
-    ]
-    cfg = Config('baseSettings.json',
-                 Flag_ue_executable_settings_path)
-
-    cfg.generateDrones(
-        dispatchers,
-        4,
-        {}
-    )
-    idx = 0
-    for drone in cfg.droneNames:
-        cfg.droneNames[drone].target = destination[idx]
-        idx += 1
-    input('Press any key to continue...')
-    main_control = Control(cfg, 1)
-
-    # main_control.moveToPosition(dispatchers, poses)
-
-    mapf = MAPF()
-    main_control.mapf.append(mapf)
-    mdrones = MultiDrones(main_control.cfg.all_drones)
-    for i in range(1000000):
-        code = mapf.next_step(mdrones)
-        if code == 0:
-            break
-        main_control.moveToPosition(dispatchers, mdrones.position)
-        for drone in main_control.cfg.all_drones:
-            pos = main_control.client.simGetVehiclePose(drone.name).position
-            mdrones.position[drone.pose_id] = np.array([pos.x_val, pos.y_val, pos.z_val]) + drone.position
-
-        # if i % 1000 == 0:
-            # input('...')
-
 
 if __name__ == '__main__':
     cfg = Config('baseSettings.json',
@@ -186,7 +107,7 @@ if __name__ == '__main__':
     main_control = Control(cfg, 1)
 
     ALLOW_MAPF = False
-    
+
     if ALLOW_MAPF:
         sim = True
         mapf = MAPF()
