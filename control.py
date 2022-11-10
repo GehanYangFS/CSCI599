@@ -185,40 +185,23 @@ if __name__ == '__main__':
 
     main_control = Control(cfg, 1)
 
-    # main_control.moveToPosition(dispatchers, poses)
-
-    sim = True
-    mapf = MAPF()
-    mapf.add_deployment(deployment)
-    main_control.mapf.append(mapf)
-    mdrones = MultiDrones(main_control.cfg.all_drones)
-    prev = copy.deepcopy(mdrones.position)
-    for i in tqdm(range(1000000)):
-        # cProfile.run('mapf.next_step(mdrones)')
-        code = mapf.next_step(mdrones, i)
-        
-        for i in range(len(mdrones.position)):
-            dist = np.linalg.norm(mdrones.position[i] - mdrones.position, axis = 1)
-            dist[i] = max(dist)
-            dist[dist>0.5] = 0
-            if dist.sum() > 0:
-                print('coll!')
-        if code == 0:
-            break
-        # print(np.linalg.norm(prev-mdrones.position, axis = 1))
-        # print(prev)
-        # for j in range(len(prev)):
-        #     if (np.linalg.norm(prev[j]-mdrones.position, axis = 1) < 1).sum() > 1:
-        #         pdb.set_trace()
-        # prev = copy.deepcopy(mdrones.position)
-        if sim:
+    ALLOW_MAPF = False
+    
+    if ALLOW_MAPF:
+        sim = True
+        mapf = MAPF()
+        mapf.add_deployment(deployment)
+        main_control.mapf.append(mapf)
+        mdrones = MultiDrones(main_control.cfg.all_drones)
+        prev = copy.deepcopy(mdrones.position)
+        for i in tqdm(range(1000000)):
+            code = mapf.next_step(mdrones, i)
+            if code == 0:
+                break
             main_control.moveToPosition(mdrones.position)
             for drone in main_control.cfg.all_drones:
                 pos = main_control.client.simGetVehiclePose(drone.name).position
                 mdrones.position[drone.pose_id] = np.array([pos.x_val, pos.y_val, pos.z_val]) + drone.position
+    else:
+        main_control.moveToPosition(poses) 
 
-        # if i % 1000 == 0:
-            # input('...')
-
-    # for _ in range(100):
-    #     main_control.step(poses)
