@@ -2,7 +2,7 @@ import numpy as np
 from utils import normalize
 import copy
 
-from droneconfig import Drone, MultiDrones
+from droneconfig import Drone, MultiDrones, Dispathcers
 import pdb
 class MAPF:
     def __init__(self) -> None:
@@ -12,6 +12,11 @@ class MAPF:
         self.l = 1
         self.target_eps = 0.2
         self.cache = [0,0]
+        self.STEPS_PER_DISPATCH = 1
+    
+    def add_deployment(self, deployment):
+        self.deployment = Dispathcers(deployment)
+        self.allowed = set()
 
     def gravitational_force(self, drones):
         f = np.zeros([len(drones), 3])
@@ -41,7 +46,7 @@ class MAPF:
             dc[i] = min(np.min(tmp),np.min(tmp2))
         return dc
 
-    def next_step(self, drones):
+    def next_step(self, drones, step):
         gf = self.gravitational_force(drones)
         rf = self.repulsive_force(drones)
         self.cache[0] = gf
@@ -62,6 +67,12 @@ class MAPF:
         #     pdb.set_trace()
         drones.preposition = copy.deepcopy(drones.position)
         drones.position[np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps]+= newPosition[np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps]
+        if step % self.STEPS_PER_DISPATCH == 0:
+            self.allowed = self.deployment.allow_dispathed
+        if len(self.deployment.all) != len(self.allowed):
+            for idx in self.deployment.all-self.allowed:
+                drones.position[idx] = copy.deepcopy(drones.preposition[idx])
+            
         if np.sum(np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps) == 0:
             print('all done')
             return 0

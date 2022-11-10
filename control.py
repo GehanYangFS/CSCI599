@@ -189,12 +189,13 @@ if __name__ == '__main__':
 
     sim = True
     mapf = MAPF()
+    mapf.add_deployment(deployment)
     main_control.mapf.append(mapf)
     mdrones = MultiDrones(main_control.cfg.all_drones)
     prev = copy.deepcopy(mdrones.position)
     for i in tqdm(range(1000000)):
         # cProfile.run('mapf.next_step(mdrones)')
-        code = mapf.next_step(mdrones)
+        code = mapf.next_step(mdrones, i)
         
         for i in range(len(mdrones.position)):
             dist = np.linalg.norm(mdrones.position[i] - mdrones.position, axis = 1)

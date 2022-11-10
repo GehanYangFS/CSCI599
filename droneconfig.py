@@ -10,6 +10,23 @@ class Drone:
         self.position = position
         self.target = target
 
+class Dispathcers:
+    def __init__(self, deployment) -> None:
+        self.dispathcers = deployment
+        self.allowed = []
+        self.allow_id = -1
+        self.all = set([_v for _,v in deployment.items() for _v in v])
+    
+    @property
+    def allow_dispathed(self):
+        self.allow_id += 1
+        for k,v in self.dispathcers.items():
+            if self.allow_id >= len(v): # single dispatcher reaches limit
+                continue
+            self.allowed.append(v[::-1][self.allow_id])
+        return set(self.allowed)
+
+
 class MultiDrones:
     def __init__(self, drones: list[Drone]) -> None:
         self.position = np.zeros([len(drones), 3])
