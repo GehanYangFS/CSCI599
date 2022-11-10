@@ -1,7 +1,5 @@
 import imp
-from multiprocessing.spawn import old_main_modules
 import airsim
-from algorithms import MinDist
 from pointcloud import PointCloud, AlphabetPointCloud
 from droneconfig import Config, MultiDrones
 import time
@@ -9,6 +7,7 @@ import numpy as np
 import os
 from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
 from algorithms import MinDist, QuotaBalanced
+from failures import FailureHandling
 from MAPF import MAPF
 import cProfile
 import pdb
@@ -49,16 +48,16 @@ class Control:
             self.client.simSetVehiclePose(
                 pose, True, vehicle_name=vehicle_name)
 
-    def _moveToPosition(self, target_pose, vehicle_name, dispatcher):
+    def _moveToPosition(self, target_pose, vehicle_name):
         pose = self.client.simGetVehiclePose(vehicle_name=vehicle_name)
         pose.position = airsim.Vector3r(*target_pose) - airsim.Vector3r(*self.cfg.droneNames[vehicle_name].position)
         self.client.simSetVehiclePose(
             pose, True, vehicle_name=vehicle_name)
 
-    def moveToPosition(self, dispatchers, poses):
+    def moveToPosition(self, poses):
         for dispathcer, drone_names in self.cfg.dispatchers.items():
             for drone in drone_names[::-1]:
-                self._moveToPosition(poses[self.cfg.droneNames[drone].pose_id], drone, dispatchers[dispathcer])
+                self._moveToPosition(poses[self.cfg.droneNames[drone].pose_id], drone)
         self.detect_collision()
     
     def detect_collision(self):
@@ -157,7 +156,6 @@ def TargetExchangeFailCaseTest2():
 
 
 if __name__ == '__main__':
-    # TargetExchangeFailCaseTest2()
     cfg = Config('baseSettings.json',
                  Flag_ue_executable_settings_path)
 
@@ -171,9 +169,11 @@ if __name__ == '__main__':
         [0,0,0], [0,4,0], [4,0,0], [4,4,0]
     ]
     deployment = QuotaBalanced(poses, dispatchers, [numDrones // len(dispatchers) + 1 for _ in range(len(dispatchers))])
+    deployment = FailureHandling.handle_deployment(deployment, 0.05)
+    poses = FailureHandling.handle_poses(poses, 0.05)
 
     cfg.generateDrones(
-        dispatchers,
+        dispatchers + [[10,10,0]],
         numDrones,
         deployment
     )
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         #         pdb.set_trace()
         # prev = copy.deepcopy(mdrones.position)
         if sim:
-            main_control.moveToPosition(dispatchers, mdrones.position)
+            main_control.moveToPosition(mdrones.position)
             for drone in main_control.cfg.all_drones:
                 pos = main_control.client.simGetVehiclePose(drone.name).position
                 mdrones.position[drone.pose_id] = np.array([pos.x_val, pos.y_val, pos.z_val]) + drone.position
