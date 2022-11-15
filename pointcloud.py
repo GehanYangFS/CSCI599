@@ -68,7 +68,7 @@ class AlphabetPointCloud():
         for i in range(len(mat)):
             for j in range(len(mat[0])):
                 if (mat[i][j] == 1):
-                    pcs.append([i + offset[0], j + offset[1], -50 + offset[2]])
+                    pcs.append([i + offset[0], j + offset[1], -20 + offset[2]])
                     for p in range(self.downwash * 2 + 1):
                         for q in range(-self.downwash, self.downwash + 1):
                             if i+p < len(mat) and j + q < len(mat[0]):
