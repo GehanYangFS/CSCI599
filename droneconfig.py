@@ -9,6 +9,10 @@ class Drone:
         self.pose_id = pose_id
         self.position = position
         self.target = target
+        self.cur = position
+        self.light = True
+        self.rotor = True
+        self.stand_by = False
 
 class Dispathcers:
     def __init__(self, deployment) -> None:
@@ -32,7 +36,7 @@ class MultiDrones:
         self.position = np.zeros([len(drones), 3])
         self.target = np.zeros([len(drones), 3])
         for i in range(len(drones)):
-            self.position[i] = drones[i].position
+            self.position[i] = drones[i].cur
             self.target[i] = drones[i].target
 
     def __len__(self):
@@ -56,7 +60,7 @@ class Config:
     def all_drones(self) -> list[Drone]:
         return sorted(list(self.droneNames.values()), key=lambda i: i.pose_id)
 
-    def _add_drone_with_position(self, x: float, y: float, z: float, pose_id: int, dispatcher: int) -> None:
+    def _add_drone_with_position(self, x: float, y: float, z: float, pose_id: int, dispatcher: int) -> str:
         drone_name = 'Drone_{}'.format(self._drone_number)
         self.base['Vehicles'][drone_name] = {
             "VehicleType": "SimpleFlight",
@@ -64,20 +68,26 @@ class Config:
         }
         self.droneNames[drone_name] = Drone(drone_name, pose_id, np.array([x,y,self.z_axis]), None)
         self.dispatchers[dispatcher].append(drone_name)
+        return drone_name
 
     def generateDrones(self, dispatchers: list[list[int]], quotaPerDispathcer: int, deployment: dict[int, list[int]] = {}) -> None:
         if len(deployment) == 0:
             pose_id = 0
             for _ in range(quotaPerDispathcer):
                 for idx, dispatcher in enumerate(dispatchers):
-                    self._add_drone_with_position(*dispatcher, pose_id = pose_id, dispatcher = idx)
+                    drone_name = self._add_drone_with_position(*dispatcher, pose_id = pose_id, dispatcher = idx)
+                    if idx == len(dispatchers) - 1:
+                        self.droneNames[drone_name].stand_by = True
                     pose_id += 1
-                    self.z_axis -= 1
+                    self.z_axis -= 2
         else:
             for k,v in deployment.items():
                 self.z_axis = -1
                 for pose_id in v:
-                    self._add_drone_with_position(*dispatchers[k], pose_id = pose_id, dispatcher = k)
+                    drone_name = self._add_drone_with_position(*dispatchers[k], pose_id = pose_id, dispatcher = k)
+                    if k == max(list(deployment.keys())):
+                        self.droneNames[drone_name].stand_by = True
+                    pose_id += 1
                     self.z_axis -= 2
         output = open(self.outputDir, 'w', encoding='utf-8')
         json.dump(self.base, output)
