@@ -1,4 +1,4 @@
-# CSCI599 - Class Project
+# Towards Simulating Drone 3D Rendering in the Real World
 ## Authors: Bonan Shen, Gehan Yang
 ## Advised by professor Shahram Ghandeharizadeh
 
