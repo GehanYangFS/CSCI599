@@ -1,5 +1,6 @@
 # CSCI599 - Class Project
 ## Authors: Bonan Shen, Gehan Yang
+## Advised by professor Shahram Ghandeharizadeh
 
 This project aims to build a system towards rendering 3D illuminations using a swarm of drones by leveraging path planning, collision avoidance, failure handling and battery charging methods. The whole project will be conducted in the simulation environment Microsoft AirSim. To narrow the gap between theoretical hypothesis and real-world implementation, the level of availability is something we cannot compromise. In order to satisfy the availability requirements, five modules should be implemented: Architecture, Destination Assignment, Path Planning and Collision Avoidance, Failure Recovery, Battery Charging. The potential contribution of the project can be summarized as:
 
@@ -12,3 +13,5 @@ paths of 3D rendering computed using Artificial Potential Field.
 *  Introduced FLSs failing and dropping scenes and methods to recover from these failures.
 *  Quantified trade-offs to simulate the flight paths computed by ICF versus Artificial Potential Field
 *  Open-Sourced a library to formalize any alphabetic 3D illuminations and a library to render any 3D illuminations using AirSim simulation with collision avoidance, failure handling and battery charging.
+
+This project mainly follows paper [Display of 3D Illuminations using Flying Light Specks](https://arxiv.org/pdf/2207.08346.pdf)
