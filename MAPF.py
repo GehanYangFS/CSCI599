@@ -79,7 +79,7 @@ class MAPF:
         if np.sum(np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps) == 0:
             print('all done')
             return 0
-        self.TargetExchange(drones)
+        # self.TargetExchange(drones)
 
     def TargetExchange(self, drones):
         for d in range(len(drones)):
