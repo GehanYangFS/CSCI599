@@ -5,7 +5,7 @@ from droneconfig import Config, MultiDrones, Drone
 import time
 import numpy as np
 import os
-from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path
+from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path, Flag_failures, Flag_multiframe
 from algorithms import MinDist, QuotaBalanced
 from failures import FailureHandling
 from MAPF import MAPF
@@ -15,6 +15,7 @@ import copy
 from utils import normalize
 from tqdm import tqdm
 import random
+from multiframe import Motill
 
 
 class Control:
@@ -56,7 +57,7 @@ class Control:
             *target_pose) - airsim.Vector3r(*self.cfg.droneNames[vehicle_name].position)
         self.client.simSetVehiclePose(
             pose, True, vehicle_name=vehicle_name)
-        self.cfg.droneNames[vehicle_name].cur = target_pose
+        self.cfg.droneNames[vehicle_name].cur = target_pose.copy()
 
     def moveToPosition(self, poses):
         for dispathcer, drone_names in self.cfg.dispatchers.items():
@@ -89,13 +90,26 @@ if __name__ == '__main__':
     cfg = Config('baseSettings.json',
                  Flag_ue_executable_settings_path)
 
-    poses = []
+    all_poses = []
     apc = AlphabetPointCloud(downwash=2)
-    poses.extend(apc.query_point_cloud(alphabet='U', volume=3))
-    poses.extend(apc.query_point_cloud(
-        alphabet='S', offset=[0, 20, 0], volume=3))
-    poses.extend(apc.query_point_cloud(
-        alphabet='C', offset=[0, 40, 0], volume=3))
+    frames = ['USC', 'TROJANS']
+    volumes = {
+        'USC': 5,
+        'TROJANS': 2
+    }
+    offsets = {
+        'USC': 20,
+        'TROJANS': 20
+    }
+    for frame in frames:
+        pose = []
+        for idx, c in enumerate(frame):
+            pose.extend(apc.query_point_cloud(alphabet=c, offset = [0, offsets[frame] * idx, 0], volume=volumes[frame]))
+        all_poses.append(np.array(pose))
+        print(len(pose))
+    # raise
+    
+    poses = all_poses[0]
     numDrones = len(poses)
     dispatchers = [
         [0, 0, 0], [0, 4, 0], [4, 0, 0], [4, 4, 0]
@@ -103,8 +117,9 @@ if __name__ == '__main__':
     collectors = np.array([8, 8, 0], dtype=np.float32)
     deployment = QuotaBalanced(poses, dispatchers, [
                                numDrones // len(dispatchers) + 1 for _ in range(len(dispatchers))])
-    deployment = FailureHandling.handle_deployment(deployment, 0.05)
-    poses, standby_pose_ids = FailureHandling.handle_poses(poses, 0.05)
+    if Flag_failures:
+        deployment = FailureHandling.handle_deployment(deployment, 0.05)
+        poses, standby_pose_ids = FailureHandling.handle_poses(poses, 0.05)
 
     cfg.generateDrones(
         dispatchers + [[10, 10, 0]],
@@ -126,7 +141,6 @@ if __name__ == '__main__':
         mapf.add_deployment(deployment)
         main_control.mapf.append(mapf)
         mdrones = MultiDrones(main_control.cfg.all_drones)
-        prev = copy.deepcopy(mdrones.position)
         for i in tqdm(range(1000000)):
             code = mapf.next_step(mdrones, i)
             if code == 0:
@@ -140,26 +154,60 @@ if __name__ == '__main__':
     else:
         main_control.moveToPosition(poses)
 
-    # start light failure handling
-    ALLOW_MAPF = False
-    input('Press any key to start light failure handling conditions ...')
-    print('Start handle light failures')
-    for _ in range(FailureHandling.SIM_LIGHT_FAILURES):
-        light_failed_drone : Drone = random.choice(main_control.cfg.all_drones)
-        light_failed_drone.target = collectors
-        poses[light_failed_drone.pose_id] = collectors
-        if light_failed_drone.stand_by == False:
-            id = standby_pose_ids[np.argmin([np.linalg.norm(light_failed_drone.cur-main_control.cfg.all_drones[_id].cur) for _id in standby_pose_ids if main_control.cfg.all_drones[_id].stand_by == True])]
+    if Flag_failures:
+        # start light failure handling
+        ALLOW_MAPF = True
+        input('Press any key to start light failure handling conditions ...')
+        print('Start handle light failures')
+        for _ in range(FailureHandling.SIM_LIGHT_FAILURES):
+            light_failed_drone : Drone = random.choice(main_control.cfg.all_drones)
+            while light_failed_drone.stand_by == True or light_failed_drone.available == False:
+                light_failed_drone : Drone = random.choice(main_control.cfg.all_drones)
+            light_failed_drone.target = collectors
+            light_failed_drone.available = False
+            poses[light_failed_drone.pose_id] = collectors
+            id = sorted([[np.linalg.norm(light_failed_drone.cur-main_control.cfg.all_drones[_id].cur), _id] for _id in standby_pose_ids if main_control.cfg.all_drones[_id].stand_by == True])[0][1]
             standby_drone = main_control.cfg.all_drones[id]
             standby_drone.stand_by = False
             standby_drone.target = light_failed_drone.cur
             poses[id] = light_failed_drone.cur
+
         if ALLOW_MAPF:
             mapf = MAPF()
             mapf.add_deployment(deployment)
             main_control.mapf.append(mapf)
             mdrones = MultiDrones(main_control.cfg.all_drones)
-            prev = copy.deepcopy(mdrones.position)
+            for i in tqdm(range(1000000)):
+                code = mapf.next_step(mdrones, i)
+                if code == 0:
+                    break
+                main_control.moveToPosition(mdrones.position)
+                for drone in main_control.cfg.all_drones:
+                    pos = main_control.client.simGetVehiclePose(
+                        drone.name).position
+                    mdrones.position[drone.pose_id] = np.array(
+                        [pos.x_val, pos.y_val, pos.z_val]) + drone.position
+        else:
+            main_control.moveToPosition(poses)
+
+
+    if Flag_multiframe:
+        input('Press any key to start multiframe transformation ...')
+        print('Start multiframe transformation')
+        ALLOW_MAPF = True
+        new_poses = all_poses[1]
+        trans, extra = Motill.simple(MultiDrones(main_control.cfg.all_drones).position, np.array(new_poses))
+        for pair in trans:
+            main_control.cfg.all_drones[pair[0]].target = new_poses[pair[1]]
+            poses[pair[0]] = new_poses[pair[1]]
+        for e in extra:
+            main_control.cfg.all_drones[e].target = collectors
+            poses[e] = collectors
+        if ALLOW_MAPF:
+            mapf = MAPF()
+            mapf.add_deployment(deployment)
+            main_control.mapf.append(mapf)
+            mdrones = MultiDrones(main_control.cfg.all_drones)
             for i in tqdm(range(1000000)):
                 code = mapf.next_step(mdrones, i)
                 if code == 0:

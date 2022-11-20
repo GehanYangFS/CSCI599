@@ -13,6 +13,7 @@ class Drone:
         self.light = True
         self.rotor = True
         self.stand_by = False
+        self.available = True
 
 class Dispathcers:
     def __init__(self, deployment) -> None:
