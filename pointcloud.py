@@ -3,7 +3,7 @@ from xmlrpc.client import boolean
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os
 class PointCloud:
     def __init__(self, src: str, numberOfPoints) -> None:
         self.src = src
@@ -39,9 +39,10 @@ class AlphabetPointCloud():
     def __init__(self, downwash: int = 3, size: int = 24, fontTypeSrc: str = "arial.ttf") -> None:
         self.size = size
         self.downwash =  downwash
-
+        self.fontTypeSrc = fontTypeSrc
         # Font
-        self.font = ImageFont.truetype(fontTypeSrc, size = size, encoding='utf-8')
+        fontpath = os.path.join(r'C:\Windows\Fonts',fontTypeSrc)
+        self.font = ImageFont.truetype(fontpath, size = size, encoding='utf-8')
 
     def _query_image(self, alphabet: str):
         assert len(alphabet) == 1
@@ -58,8 +59,13 @@ class AlphabetPointCloud():
         
         return image
 
-    def query_matrix(self, alphabet: str):
+    def query_matrix(self, alphabet: str, savefig: bool = False):
         image = self._query_image(alphabet)
+        if savefig:
+            fig = plt.imshow(image, cmap='gray')
+            fig.axes.get_xaxis().set_visible(False)
+            fig.axes.get_yaxis().set_visible(False)
+            plt.savefig(f"{alphabet}_{self.fontTypeSrc}.png", transparent=True, dpi = 300)
         return np.array(image, dtype=np.uint8)
     
     def query_point_cloud(self, alphabet: str, offset: list = [0,0,0], volume: int = 1, debug: boolean = False):
@@ -68,7 +74,7 @@ class AlphabetPointCloud():
         for i in range(len(mat)):
             for j in range(len(mat[0])):
                 if (mat[i][j] == 1):
-                    pcs.append([i + offset[0], j + offset[1], -20 + offset[2]])
+                    pcs.append([i + offset[0], j + offset[1], -50 + offset[2]])
                     for p in range(self.downwash * 2 + 1):
                         for q in range(-self.downwash, self.downwash + 1):
                             if i+p < len(mat) and j + q < len(mat[0]):
@@ -81,22 +87,44 @@ class AlphabetPointCloud():
         pcs[:,0] = max(diff)
         out = pcs.copy()
         for _ in range(1, volume):
-            pcs[:, 0] += 3
+            pcs[:, 0] += 5
             out = np.concatenate((out, pcs), axis = 0)
         return out
 
-    def debug_point_cloud(self, alphabet: str):
+    def debug_point_cloud(self, alphabet: str, savefig: bool = False):
         pcs = self.query_point_cloud(alphabet, debug=True)
         pcs_img = np.zeros([self.size,self.size])
         for pc in pcs:
             pcs_img[int(pc[0])][int(pc[1])] = 255
-        plt.imshow(pcs_img, cmap='gray')
-        plt.show()
+        if savefig:
+            fig = plt.imshow(pcs_img, cmap='gray')
+            fig.axes.get_xaxis().set_visible(False)
+            fig.axes.get_yaxis().set_visible(False)
+            plt.savefig("experiment/U_1.pdf")
+        return pcs_img
 
 
 if __name__ == '__main__':
     # pc = PointCloud("", 100)
     # print(pc.getPoints()) 
 
-    apc = AlphabetPointCloud(downwash=1)
-    apc.debug_point_cloud('B')
+    all_poses = []
+    apc = AlphabetPointCloud(downwash=2, size = 48)
+    apc.debug_point_cloud('U')
+    # frames = ['USC', 'TROJANS']
+    # volumes = {
+    #     'USC': 5,
+    #     'TROJANS': 2
+    # }
+    # offsets = {
+    #     'USC': 20,
+    #     'TROJANS': 20
+    # }
+    # for frame in frames:
+    #     pose = []
+    #     for idx, c in enumerate(frame):
+    #         pose.extend(apc.query_point_cloud(alphabet=c, offset = [0, offsets[frame] * idx, 0], volume=volumes[frame]))
+    #     all_poses.append(pose)
+    #     with open(f'pointclouds/{frame}.pc','w',encoding='utf-8') as f:
+    #         for p in pose:
+    #             f.write(f'{int(p[0])},{int(p[1])},{int(p[2])}\n')

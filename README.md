@@ -15,3 +15,9 @@ paths of 3D rendering computed using Artificial Potential Field.
 *  Open-Sourced a library to formalize any alphabetic 3D illuminations and a library to render any 3D illuminations using AirSim simulation with collision avoidance, failure handling and battery charging.
 
 This project mainly follows paper [Display of 3D Illuminations using Flying Light Specks](https://arxiv.org/pdf/2207.08346.pdf)
+
+
+# How to run the demo
+* Open `unreal/README.md` and `unreal/Change AirSim Api/README.md`, follow the steps.
+* Open `flags.py`, change `Flag_ue_executable_settings_path` to your local AirSim settings path.
+* Execute `python control.py`. You will see a sentence `Press any key to continue...`. At this time, open your `blocks.exe` and press any key in the terminal. The controller will automatically start.

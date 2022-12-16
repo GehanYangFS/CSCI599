@@ -3,3 +3,4 @@ __pycache__
 .DS_Store
 Path-Planning-and-Collision-Avoidance
 papers
+.VS*

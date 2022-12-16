@@ -9,24 +9,30 @@ class MAPF:
         self.eps = 5
         self.eta = 400
         self.rho = 1.8  # rep distance
-        self.l = 1
+        self.l = 1.0
         self.target_eps = 0.2
         self.cache = [0,0]
-        self.STEPS_PER_DISPATCH = 1
+        self.STEPS_PER_DISPATCH = 25
         self.EXIT_THRESHOLD = 1
     
     def add_deployment(self, deployment):
         self.deployment = Dispathcers(deployment)
         self.allowed = set()
+        self.not_allowed = set()
 
-    def gravitational_force(self, drones):
+    def gravitational_force(self, drones, sequential = False):
         f = np.zeros([len(drones), 3])
-        return self.eps * (drones.target - drones.position)
+        ret = self.eps * (drones.target - drones.position)
+        if sequential:
+            ret[np.array(list(self.not_allowed),dtype=int)] = 0
+        return ret
 
-    def repulsive_force(self, drones):
+    def repulsive_force(self, drones, sequential = False):
         # pdb.set_trace()
         f = np.zeros([len(drones), 3])
         for i in range(len(drones)):
+            if sequential and i not in self.allowed:
+                continue
             tmp =  drones.position[i] - drones.position
             tmp2 = self.eta * (1 / tmp - 1 / self.rho) * ( 1 / tmp ** 2) * (tmp / np.linalg.norm(tmp))
             tmp2[np.isnan(tmp2)] = 0
@@ -34,6 +40,8 @@ class MAPF:
             tmp2[(np.linalg.norm(tmp,axis=1) >= self.rho)] = 0
             # tmp[:, 2] = -tmp[:, 2]
             tmp2 = np.abs(tmp2) * np.sign(tmp)
+            if sequential:
+                tmp2[np.array(list(self.not_allowed),dtype=int)] = 0
             f[i] = np.sum(tmp2, axis = 0)
             # print(tmp2)
         return f
@@ -47,9 +55,9 @@ class MAPF:
             dc[i] = min(np.min(tmp),np.min(tmp2))
         return dc
 
-    def next_step(self, drones, step):
-        gf = self.gravitational_force(drones)
-        rf = self.repulsive_force(drones)
+    def next_step(self, drones, step, sequential = False):
+        gf = self.gravitational_force(drones, sequential)
+        rf = self.repulsive_force(drones, sequential)
         self.cache[0] = gf
         self.cache[1] = rf
         # print(rf[0], gf[0])
@@ -70,11 +78,13 @@ class MAPF:
         drones.position[np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps]+= newPosition[np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps]
         if np.sum(np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps) <= self.EXIT_THRESHOLD:
             return 0
-        if step % self.STEPS_PER_DISPATCH == 0:
-            self.allowed = self.deployment.allow_dispathed
-        if len(self.deployment.all) != len(self.allowed):
-            for idx in self.deployment.all-self.allowed:
-                drones.position[idx] = copy.deepcopy(drones.preposition[idx])
+        if sequential:
+            if step % self.STEPS_PER_DISPATCH == 0:
+                self.allowed = self.deployment.allow_dispathed
+                self.not_allowed = self.deployment.all-self.allowed
+            if len(self.deployment.all) != len(self.allowed):
+                for idx in self.not_allowed:
+                    drones.position[idx] = copy.deepcopy(drones.preposition[idx])
             
         if np.sum(np.linalg.norm(drones.position-drones.target,axis=1)>=self.target_eps) == 0:
             print('all done')

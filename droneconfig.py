@@ -30,6 +30,7 @@ class Dispathcers:
                 continue
             self.allowed.append(v[::-1][self.allow_id])
         return set(self.allowed)
+            
 
 
 class MultiDrones:
@@ -80,16 +81,16 @@ class Config:
                     if idx == len(dispatchers) - 1:
                         self.droneNames[drone_name].stand_by = True
                     pose_id += 1
-                    self.z_axis -= 2
+                    # self.z_axis -= 2
         else:
             for k,v in deployment.items():
-                self.z_axis = -1
+                self.z_axis = -10
                 for pose_id in v:
                     drone_name = self._add_drone_with_position(*dispatchers[k], pose_id = pose_id, dispatcher = k)
                     if k == max(list(deployment.keys())):
                         self.droneNames[drone_name].stand_by = True
                     pose_id += 1
-                    self.z_axis -= 2
+                    # self.z_axis -= 2
         output = open(self.outputDir, 'w', encoding='utf-8')
         json.dump(self.base, output)
 
