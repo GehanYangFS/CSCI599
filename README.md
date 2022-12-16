@@ -12,7 +12,7 @@ The emerging drone 3D rendering systems is a key enabling technology for future 
 ### Drone with Lights Equipped
 ![dronelight](experiment/dronewithlight.png)
 
-Currently we provide four colors: Red, Green, Blue and Purple. APIs can be found in `unreal/Change AirSim Api/README.md`
+Currently we provide four colors: Red, Green, Blue and Purple. APIs can be found in `unreal/Change AirSim Api/README.md`. Unreal Assets can be found in `unreal` folder.
 
 ### Rendering USC logo using these assets
 ![usclogp](experiment/usclogorendering.png)
