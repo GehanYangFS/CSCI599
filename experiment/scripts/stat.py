@@ -21,7 +21,7 @@ from droneconfig import Config, MultiDrones, Drone
 import time
 import numpy as np
 import os
-from flags import Flag_ue_executable_file, Flag_ue_executable_settings_path, Flag_failures, Flag_multiframe
+from flags import Flag_ue_executable_settings_path, Flag_failures, Flag_multiframe
 from algorithms import MinDist, QuotaBalanced
 from failures import FailureHandling
 from MAPF import MAPF
@@ -60,11 +60,10 @@ def step(l, rep):
             pose.extend(apc.query_point_cloud(alphabet=c, offset = [0, offsets[frame] * idx, 0], volume=volumes[frame]))
         all_poses.append(pose)
         print(len(pose))
-
-    poses = all_poses[0]
+    poses = [np.array([1,1,1])]
     numDrones = len(poses)
     dispatchers = [
-        [0, 0, 0], [0, 26, 0], [16, 0, 0], [16, 26, 0]
+        [100, 100, 0]
     ]
     collectors = np.array([30, 30, 0], dtype=np.float32)
     deployment = QuotaBalanced(poses, dispatchers, [
