@@ -63,7 +63,7 @@ class MAPF:
         # print(rf[0], gf[0])
         # input('.')
         # gf[rf > 0] = 0
-        fsum = gf + rf
+        fsum = gf + rf * 0.0
         # print(gf)
         # print(rf)
         # print(fsum)
